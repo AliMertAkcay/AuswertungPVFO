@@ -12,6 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import Auswertung1 as Aus1
+from poisson_integration import poisson_integration
 plt.close("all")
 
 
@@ -27,7 +28,7 @@ plt.close("all")
 
 # ----------------------- Drei Dimensionale Funktionen ----------------
 
-def AffensattelnFeld (Anzahlx = 2201, Anzahly = 2201):
+def AffensattelnFeld (Anzahlx = 101, Anzahly = 101):
     
     x = np.linspace(-10,10,Anzahlx)
     y = np.linspace(-10, 10,Anzahly)
@@ -48,15 +49,15 @@ def AffensattelnFeld (Anzahlx = 2201, Anzahly = 2201):
     dx = x[1] -x[0]
     dy = y[1] -y[0]
     
-    return n,X,Y,dx,dy
+    return n,X,Y,dx,dy,x,y
 
-def Paraboloid (Anzahlx = 2001, Anzahly = 2001):
+def Paraboloid (Anzahlx = 1001, Anzahly = 1001):
     
     x = np.linspace(-10,10,Anzahlx)
     y = np.linspace(-10, 10,Anzahly)
     X,Y = np.meshgrid(x,y)
     #X,Y = np.meshgrid(y,x)
-    fx = -2*X
+    fx = -(2*X + 10)
     fy = -2*Y
     einsen = np.ones((Anzahlx,Anzahly))
     matrix = np.empty((Anzahlx,Anzahly),dtype = object)
@@ -75,54 +76,51 @@ def Paraboloid (Anzahlx = 2001, Anzahly = 2001):
 
 #n,X,Y = AffensattelnFeld()
 
-n,X,Y,dx,dy = Paraboloid()
+#n,X,Y,dx,dy = Paraboloid()
 
+#-------------------- Test poisson Integration ------------------
 
-#--------------------- Test Auswertung --------------------------------
-
-
-# Auswertungs Teil zum test ob diese Funktionen mit den Oberen Simulativen werten passen
-
-steigungsfeld = Aus1.steigungausn(n)
-
-div = Aus1.divergenz(steigungsfeld)
-
-Z = Aus1.poisson_solver(div, dx, dy)
+#steigungsfeld = Aus1.steigungausn(n)
 
 #Z = Aus1.pfadintegral_cumtrapz(steigungsfeld, X, Y)
-# Alternative Integration: Aus1.Integration(steigungsfeld, X, Y)
-fig = plt.figure("Oberfläche aus der Integration", figsize=(12, 9)) # Figure mit Title
 
-ax = fig.add_subplot(111, projection='3d')
+#fx,fy = Aus1.steigungextraktion(steigungsfeld)
 
-ax.plot_surface(X,Y,Z+190,label="Integration der Ableitung") 
-
-#ax.plot_surface(X,Y,X**3-3*X*Y**2,label="Ursprüngliche Funktion") 
-ax.plot_surface(X,Y,X**2+Y**2,label="Ursprüngliche Funktion")
+#f = poisson_integration(fx,fy,dx,dy)
 
 
-# Test Affensattel
+
+# fig2 = plt.figure("Oberfläche aus der Integration2", figsize=(12, 9)) # Figure mit Title
+# ax2 = fig2.add_subplot(111, projection='3d')
+
+# ax2.plot_surface(X,Y,Z,color = "Blue",label="Integration der Ableitung2") 
+
+# #ax2.plot_surface(X,Y,X**3-3*X*Y**2,label="Ursprüngliche Funktion")
+# ax2.plot_surface(X,Y,X**2+Y**2+10*X,color = "Black",label="Ursprüngliche Funktion")
+# ax2.set_xlabel("X")
+# ax2.set_ylabel("Y")
+# ax2.set_zlabel("Z")
+# fig2.label()
 
 
-n,X,Y,dx,dy = AffensattelnFeld()
+
+#--------------------- Test pfad Integral --------------------------------
+
+n,X,Y,dx,dy,x,y = AffensattelnFeld()
 
 steigungsfeld = Aus1.steigungausn(n)
+mx,my = Aus1.steigungextraktion(steigungsfeld)
+Z = Aus1.pfadintegral_cumtrapz_mittel(mx, my, x, y)
 
-div = Aus1.divergenz(steigungsfeld)
-
-
-#Z = Aus1.pfadintegral_cumtrapz(steigungsfeld, X, Y)
-Z = Aus1.poisson_solver(div, dx, dy)
-
-# Alternative Integration: Aus1.Integration(steigungsfeld, X, Y)
 fig2 = plt.figure("Oberfläche aus der Integration2", figsize=(12, 9)) # Figure mit Title
-
 ax2 = fig2.add_subplot(111, projection='3d')
 
-ax2.plot_surface(X,Y,Z,label="Integration der Ableitung2") 
+ax2.plot_surface(X,Y,Z,color = "Blue",label="Integration der Ableitung2") 
 
 ax2.plot_surface(X,Y,X**3-3*X*Y**2,label="Ursprüngliche Funktion")
+#ax2.plot_surface(X,Y,X**2+Y**2+10*X,color = "Black",label="Ursprüngliche Funktion")
+ax2.set_xlabel("X")
+ax2.set_ylabel("Y")
+ax2.set_zlabel("Z")
+fig2.label()
 
-
-
-   

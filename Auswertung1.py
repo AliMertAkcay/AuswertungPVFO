@@ -118,7 +118,8 @@ def pfadintegral_cumtrapz(steigungsfeld, X, Y):
             my[j, i] = steigungsfeld[j, i][1]
 
     z = np.zeros((ny, nx))
-
+    z2 = z
+    
     # Integration entlang X-Richtung (Zeile für Zeile)
     for j in range(ny):
         z[j, :] = cumulative_trapezoid(mx[j, :], X[j, :], initial=0)
@@ -126,7 +127,7 @@ def pfadintegral_cumtrapz(steigungsfeld, X, Y):
     # Integration entlang Y-Richtung (Spalte für Spalte) wird **additiv** hinzugefügt
     for i in range(nx):
         z[:, i] += cumulative_trapezoid(my[:, i], Y[:, i], initial=0)
-
+    
     return z
 
 
@@ -217,19 +218,116 @@ def poisson_solver(divergence, dx, dy):
     f = np.real(np.fft.ifft2(f_fft))
     return f
 
-def divergenz(steigungsfeld):
+def steigungextraktion(steigungsfeld):
     
     spalte = len(steigungsfeld[0,:])
     zeile = len(steigungsfeld[:,0])
     
-    div = np.zeros((zeile,spalte))
+    fx = np.zeros((zeile,spalte))
+    fy = fx
     
     for i in range(zeile):
         for j in range(spalte):
-            div[i,j] = steigungsfeld[i,j][0] + steigungsfeld[i,j][1]  
+            fx[i,j] = steigungsfeld[i,j][0]  
+            fy[i,j] = steigungsfeld[i,j][1]     
     
-    
-    
-    
-    return div
+    return fx,fy
 
+def IntegrationPhillip(steigungsfeld):
+    from scipy.ndimage import gaussian_filter
+    
+    # Beispiel-Steigungen (mx, my) auf Kanten, z.B. 3x3
+    # mx = np.array([
+    #     [0.1, 0.2, 0.1],
+    #     [0.0, 0.1, 0.0],
+    #     [-0.1, 0.0, -0.1]
+    # ])
+    # my = np.array([
+    #     [0.0, 0.1, 0.0],
+    #     [0.2, 0.1, 0.2],
+    #     [0.1, 0.0, 0.1]
+    # ])
+    # """
+    #np.random.seed(10)  # Für reproduzierbare Ergebnisse
+    
+    # Beispiel-Steigungsmatrizen (mx, my) mit Werten zwischen -0.2 und 0.2
+    #mx = np.random.uniform(-0.2, 0.2, (10, 10))
+    #my = np.random.uniform(-0.2, 0.2, (10, 10))
+    zeile = steigungsfeld.shape[0]
+    spalte = steigungsfeld.shape[1] 
+    
+    mx = np.zeros((zeile,spalte))
+    my = mx              
+    
+    for i in range(zeile):
+        for j in range(spalte):
+            mx[i,j] = steigungsfeld[i,j][0]
+    
+            my[i,j] = steigungsfeld[i,j][1]
+    
+    n, m = mx.shape #nimmt form von mx und gibt dim in n und m zurück
+    height_x = np.zeros((n, m))  # Integration: erst Zeile, dann Spalte
+    height_y = np.zeros((n, m))  # Integration: erst Spalte, dann Zeile
+    
+    # Integration über x-Pfad (erst Zeile, dann Spalte)
+    for i in range(n):
+        for j in range(m):
+            if i == 0 and j == 0:
+                height_x[i, j] = 0
+            elif i == 0 and j > 0:
+                if j-1 < m:
+                    height_x[i, j] = height_x[i, j-1] + mx[i, j-1]
+            elif j == 0 and i > 0:
+                if i-1 < n:
+                    height_x[i, j] = height_x[i-1, j] + my[i-1, j]
+            else:
+                if i-1 < n and j-1 < m:
+                    height_x[i, j] = height_x[i, j-1] + mx[i-1, j-1]
+    
+    # Integration über y-Pfad (erst Spalte, dann Zeile)
+    for i in range(n):
+        for j in range(m):
+            if i == 0 and j == 0:
+                height_y[i, j] = 0
+            elif j == 0 and i > 0:
+                if i-1 < n and j < m:
+                    height_y[i, j] = height_y[i-1, j] + my[i-1, j]
+                else:
+                    height_y[i, j] = height_y[i-1, j]
+            elif i == 0 and j > 0:
+                if j-1 < m:
+                    height_y[i, j] = height_y[i, j-1] + mx[i, j-1]
+                else:
+                    height_y[i, j] = height_y[i, j-1]
+            else:
+                if i-1 < n and j < m:
+                    height_y[i, j] = height_y[i-1, j] + my[i-1, j]
+                else:
+                    height_y[i, j] = height_y[i, j-1]
+    
+    # Mittelwert der beiden Integrationspfade
+    height_avg = 0.5 * (height_x + height_y)
+    sigma = 1.5
+    height_smoothed = gaussian_filter(height_avg, sigma=sigma)
+    return height_avg
+
+def pfadintegral_cumtrapz_mittel(mx, my, x, y):
+    #TODO: Dies ist die Korekkte Integration
+    n, m = mx.shape
+    height_x = np.zeros((n+1, m+1))
+    height_y = np.zeros((n+1, m+1))
+
+    # Pfad 1: erst Zeile (mx), dann Spalte (my)
+    height_x[0, 1:] = cumulative_trapezoid(mx[0, :], x[1:], initial=0)
+    height_x[1:, 0] = cumulative_trapezoid(my[:, 0], y[1:], initial=0)
+    for i in range(1, n+1):
+        height_x[i, 1:] = height_x[i, 0] + cumulative_trapezoid(mx[i-1, :], x[1:], initial=0)
+
+    # Pfad 2: erst Spalte (my), dann Zeile (mx)
+    height_y[1:, 0] = cumulative_trapezoid(my[:, 0], y[1:], initial=0)
+    height_y[0, 1:] = cumulative_trapezoid(mx[0, :], x[1:], initial=0)
+    for j in range(1, m+1):
+        height_y[1:, j] = height_y[0, j] + cumulative_trapezoid(my[:, j-1], y[1:], initial=0)
+
+    height_avg = 0.5 * (height_x + height_y)
+    return height_avg
