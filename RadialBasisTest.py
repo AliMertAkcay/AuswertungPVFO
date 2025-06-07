@@ -22,7 +22,7 @@ def dfdy(x, y):
     return -6*x*y
 
 # 2. Erzeuge Gitterpunkte
-nx, ny = 100, 100
+nx, ny = 50, 50
 x_vec = np.linspace(-2, 2, nx)
 y_vec = np.linspace(-2, 2, ny)
 X, Y = np.meshgrid(x_vec, y_vec)
@@ -65,6 +65,7 @@ Phi_dx = np.zeros((N, N))
 Phi_dy = np.zeros((N, N))
 for i in range(N):
     for j in range(N):
+        #print(i,j)
         Phi_dx[i, j] = gaussian_rbf_dx(points[i], points[j], epsilon)
         Phi_dy[i, j] = gaussian_rbf_dy(points[i], points[j], epsilon)
 
@@ -78,7 +79,13 @@ coeffs, _, _, _ = lstsq(A, b, rcond=None)
 # Rekonstruiere die Oberfläche aus den Koeffizienten
 Z_rbf = Phi @ coeffs
 
-# 6. Visualisierung
+
+
+
+
+
+
+#%% 6. Visualisierung
 Z_rbf_grid = Z_rbf.reshape((ny, nx))
 Z_true_grid = Z_true.reshape((ny, nx))
 diff = Z_true_grid - Z_rbf_grid

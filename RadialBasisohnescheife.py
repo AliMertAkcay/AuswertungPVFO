@@ -12,16 +12,54 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial.distance import cdist
 from numpy.linalg import lstsq
+plt.close("all")
 
 # Affensattel-Funktion und Ableitungen
-def monkey_saddle(x, y):
-    return x**3 - 3*x*y**2
+def monkey_saddle(x, y,i):
+    
+    match i:
+        case 1: 
+            F = x**3 - 3*x*y**2 
+        case 2:
+            F = x**2 + y **3
+        case 3: 
+            F = x*y**2+x**2*y**2
+        case 4:
+            F = np.sin(x**2)*10+y**2
+            
+    return F
 
-def dfdx(x, y):
-    return 3*x**2 - 3*y**2
+def dfdx(x, y, i):
+    match i:
+        case 1: 
+            Fx = 3*x**2 - 3*y**2 
+        case 2:
+            Fx = 2*x
+        case 3: 
+            Fx = y**2+2*x*y**2
+        case 4:
+            Fx = 20*x*np.cos(x**2) 
+    
+    return Fx
 
-def dfdy(x, y):
-    return -6*x*y
+def dfdy(x, y,i):
+    match i:
+        case 1:
+            # F = x**3 - 3*x*y**2
+            dF_dy = -6 * x * y
+        case 2:
+            # F = x**2 + y**3
+            dF_dy = 3 * y**2
+        case 3:
+            # F = x*y**2 + x**2*y**2
+            dF_dy = 2 * x * y + 2 * x**2 * y
+        case 4:
+            # F = np.sin(x**2)*10 + y**2
+            dF_dy = 2 * y
+    
+    return dF_dy
+
+
 
 # Gitterpunkte
 nx, ny = 50, 50
@@ -31,9 +69,9 @@ X, Y = np.meshgrid(x_vec, y_vec)
 points = np.column_stack((X.ravel(), Y.ravel()))
 
 # Funktionswerte und Gradienten
-Z_true = monkey_saddle(X, Y).ravel()
-gx = dfdx(X, Y).ravel()
-gy = dfdy(X, Y).ravel()
+Z_true = monkey_saddle(X, Y,i=4).ravel()
+gx = dfdx(X, Y,i=4).ravel()
+gy = dfdy(X, Y,i=4).ravel()
 
 N = points.shape[0]
 epsilon = 1.0
@@ -61,7 +99,7 @@ Z_rbf = Phi @ coeffs
 # Visualisierung
 Z_rbf_grid = Z_rbf.reshape((ny, nx))
 Z_true_grid = Z_true.reshape((ny, nx))
-diff_grid = Z_true_grid - Z_rbf_grid
+diff_grid = Z_true_grid - Z_rbf_grid#-12.76483456
 
 fig = plt.figure(figsize=(18, 5))
 ax1 = fig.add_subplot(131, projection='3d')
