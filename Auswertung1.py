@@ -193,7 +193,7 @@ def poisson_solver(divergence, dx, dy):
     Solve Laplace equation: ∇²f = divergence using FFT.
     """
     # Was genau ist divergence ? in diesem Sinne
-    # TODO: Divergence Fixen
+    # TODO: Divergence Fixen muss hier die Divergenz des vektorfelds für die Steigung hin? 
     ny, nx = divergence.shape
     # Fourier coordinates
     kx = np.fft.fftfreq(nx, d=dx) * 2 * np.pi
