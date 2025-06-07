@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Created on Sat Jun  7 12:45:45 2025
 
@@ -77,8 +75,8 @@ def SimWerteforChunk():
         Number of iterations for the calculation
 
     """
-    k = 50 
-    nx, ny = 5000, 5000
+    k = 20 
+    nx, ny = 100, 100
     s = int(nx/k)
     
     x_vec = np.linspace(-1, 1, nx)
@@ -106,81 +104,54 @@ def SimWerteforChunk():
 
 #%% Algorihtmuss
 
-def RBF_Algorihtmuss(s):
-    
-    """
-    Algorihtmuss zur Rekonstruktion der Oberfläche mit hilfe der RBF Funktion die Theorie muss ich mir noch angucken
-    https://en.wikipedia.org/wiki/Radial_basis_function
-    https://de.wikipedia.org/wiki/Radiale_Basisfunktion
-    """    
-    
+
+def RBF_Algorihtmuss(s, epsilon=1.0):
     for i in range(s):
         for j in range(s):
-            X = np.load("./Data/X/"+"MessChunk_X"+str(i)+str(j)+".npy")
-            Y = np.load("./Data/Y/"+"MessChunk_Y"+str(i)+str(j)+".npy")
-            
-            gx = np.load("./Data/gx/"+"MessChunk_gx"+str(i)+str(j)+".npy").ravel()
-            gy = np.load("./Data/gy/"+"MessChunk_gy"+str(i)+str(j)+".npy").ravel()
-            
-            #gxrav = gx.ravel
-            #gyrav = gy.ravel
-            
-            points = np.column_stack((X.ravel(), Y.ravel()))    
+            X = np.load(f"./Data/X/MessChunk_X{i}{j}.npy")
+            Y = np.load(f"./Data/Y/MessChunk_Y{i}{j}.npy")
+            gx = np.load(f"./Data/gx/MessChunk_gx{i}{j}.npy").ravel()
+            gy = np.load(f"./Data/gy/MessChunk_gy{i}{j}.npy").ravel()
+    
+            points = np.column_stack((X.ravel(), Y.ravel()))
             N = points.shape[0]
-            epsilon = 1.0
-            
-            
-            # Paarweise Differenzen für alle Punktpaare (vektorisiert)
-            diff = points[:, np.newaxis, :] - points[np.newaxis, :, :]  # (N, N, 2)
-            r = np.linalg.norm(diff, axis=2)  # (N, N)
-            
-            # Gaußsche RBF und Ableitungen (vektorisiert)
-            Phi = np.exp(-(epsilon * r)**2)  # (N, N)
-            # Ableitungen nach x und y (Kettenregel, vektorisiert)
+    
+            # Fast C-based pairwise distances
+            r = cdist(points, points)
+            Phi = np.exp(-(epsilon * r)**2)
+    
+            # For derivatives, use broadcasting as before (unless you find a more efficient analytical way)
+            diff = points[:, np.newaxis, :] - points[np.newaxis, :, :]
             Phi_dx = -2 * epsilon**2 * diff[:, :, 0] * Phi
             Phi_dy = -2 * epsilon**2 * diff[:, :, 1] * Phi
-            
-            # Least-Squares-System aufstellen
+    
+            # Least Squares
             A = np.vstack([Phi_dx, Phi_dy])
             b = np.hstack([gx, gy])
-            
-            # Lösung bestimmen
-            coeffs, _, _, _ = lstsq(A, b, rcond=None)
-            
-            # Oberfläche rekonstruieren
+    
+            coeffs, *_ = lstsq(A, b, rcond=None)
             #Z_rbf = Phi @ coeffs
-            #np.save("./Data/ZAprox/"+"Chunk"+str(i)+str(j)+".npy",Z_rbf)
-            np.save("./Data/ZAprox/"+"Chunk"+str(i)+str(j)+".npy",Phi @ coeffs)
-            print("Chunk: "+"Zeile: "+ str(i)+"Spalte: "+str(j)+" wird Aproximiert")
+            #print("Chunk: "+"Zeile: "+ str(i)+"Spalte: "+str(j)+" wird Aproximiert")
+            #np.save(f"./Data/ZAprox/Chunk{i}{j}.npy", Z_rbf)
+            np.save(f"./Data/ZAprox/Chunk{i}{j}.npy", Phi @ coeffs)
         
     return s
 #%% 
+def Plotfunktion(s,k):
+    for i in range(s):
+        for j in range(s):
+            
+            X = np.load(f"./Data/X/MessChunk_X{i}{j}.npy")
+            Y = np.load(f"./Data/Y/MessChunk_Y{i}{j}.npy")
+            Z_true_grid = np.load(f"./Data/ZAprox/Chunk{i}{j}.npy").reshape(k,k)
+            
+            
+            
+            fig = plt.figure(figsize=(18, 5))
+            ax1 = fig.add_subplot(111, projection='3d')
+            ax1.plot_surface(X, Y, Z_true_grid, cmap='viridis')
+            ax1.set_title('Original: Rekunstruktion')
+            
 k,s = SimWerteforChunk()
-
-#RBF_Algorihtmuss(s)
-
-
-#def Plotfunktion():
-    
-#    for i in range():
-        
-#    return
-# # Visualisierung
-# Z_rbf_grid = Z_rbf.reshape((ny, nx))
-# Z_true_grid = Z_true.reshape((ny, nx))
-# diff_grid = Z_true_grid - Z_rbf_grid#-12.76483456
-
-# fig = plt.figure(figsize=(18, 5))
-# ax1 = fig.add_subplot(131, projection='3d')
-# ax1.plot_surface(X, Y, Z_true_grid, cmap='viridis')
-# ax1.set_title('Original: Affensattel')
-
-# ax2 = fig.add_subplot(132, projection='3d')
-# ax2.plot_surface(X, Y, Z_rbf_grid, cmap='viridis')
-# ax2.set_title('RBF-Rekonstruktion (Least Squares)')
-
-# ax3 = fig.add_subplot(133, projection='3d')
-# ax3.plot_surface(X, Y, diff_grid, cmap='seismic')
-# ax3.set_title('Differenz (Original - RBF)')
-# plt.tight_layout()
-# plt.show()
+RBF_Algorihtmuss(s,epsilon=1.0)
+Plotfunktion(s,k)
