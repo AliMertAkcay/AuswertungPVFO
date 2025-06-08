@@ -79,11 +79,11 @@ def SimWerteforChunk():
 
     """
     k = 50 
-    nx, ny = 100, 100
+    nx, ny = 50, 50
     s = int(nx/k)
     
-    x_vec = np.linspace(-1, 1, nx)
-    y_vec = np.linspace(-1, 1, ny)
+    x_vec = np.linspace(-10, 10, nx)
+    y_vec = np.linspace(-10, 10, ny)
     X, Y = np.meshgrid(x_vec, y_vec)
     #points = np.column_stack((X.ravel(), Y.ravel()))
     
@@ -156,7 +156,7 @@ def Plotfunktion(s):
             
             X = np.load(f"./Data/X/MessChunk_X{i}{j}.npy")
             Y = np.load(f"./Data/Y/MessChunk_Y{i}{j}.npy")
-            Z_true_grid = np.load(f"./Data/ZAprox/Chunk{i}{j}.npy")
+            Z_true_grid = np.load(f"./Data/ZAprox/Chunk{i}{j}.npy").reshape(50,50)
             
             fig = plt.figure(figsize=(18, 5))
             ax1 = fig.add_subplot(111, projection='3d')
@@ -170,3 +170,4 @@ def Plotfunktion(s):
 #%% 
 k,s = SimWerteforChunk()
 RBF_Algorihtmuss(s,epsilon=1.0)
+Plotfunktion(s)

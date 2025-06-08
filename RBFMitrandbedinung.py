@@ -174,6 +174,65 @@ def RBF_Algorihtmuss(s, epsilon=1.0):
             
             
     return s
+
+def RBF_Algorihtmuss_Randkopplung(s, k, epsilon=1.0):
+    for i in range(s):
+        for j in range(s):
+            # Eigene Daten laden
+            X = np.load(f"./Data/X/MessChunk_X{i}{j}.npy")
+            Y = np.load(f"./Data/Y/MessChunk_Y{i}{j}.npy")
+            gx = np.load(f"./Data/gx/MessChunk_gx{i}{j}.npy").ravel()
+            gy = np.load(f"./Data/gy/MessChunk_gy{i}{j}.npy").ravel()
+
+            points = np.column_stack((X.ravel(), Y.ravel()))
+            points_total = points.copy()
+            gx_total = gx.copy()
+            gy_total = gy.copy()
+
+            # Ränder der Nachbarn holen (nur bereits berechnete Chunks einbeziehen)
+            # Obere Nachbar (i-1,j)
+            if i > 0:
+                X_top = np.load(f"./Data/X/MessChunk_X{i-1}{j}.npy")[-1, :]
+                Y_top = np.load(f"./Data/Y/MessChunk_Y{i-1}{j}.npy")[-1, :]
+                gx_top = np.load(f"./Data/gx/MessChunk_gx{i-1}{j}.npy")[-1, :].ravel()
+                gy_top = np.load(f"./Data/gy/MessChunk_gy{i-1}{j}.npy")[-1, :].ravel()
+                pts_top = np.column_stack((X_top, Y_top))
+                points_total = np.vstack([points_total, pts_top])
+                gx_total = np.concatenate([gx_total, gx_top])
+                gy_total = np.concatenate([gy_total, gy_top])
+            # Linker Nachbar (i,j-1)
+            if j > 0:
+                X_left = np.load(f"./Data/X/MessChunk_X{i}{j-1}.npy")[:, -1]
+                Y_left = np.load(f"./Data/Y/MessChunk_Y{i}{j-1}.npy")[:, -1]
+                gx_left = np.load(f"./Data/gx/MessChunk_gx{i}{j-1}.npy")[:, -1].ravel()
+                gy_left = np.load(f"./Data/gy/MessChunk_gy{i}{j-1}.npy")[:, -1].ravel()
+                pts_left = np.column_stack((X_left, Y_left))
+                points_total = np.vstack([points_total, pts_left])
+                gx_total = np.concatenate([gx_total, gx_left])
+                gy_total = np.concatenate([gy_total, gy_left])
+
+            # --- KORREKTUR BEGINNT HIER ---
+            # Fit: alle Stützstellen (points_total), alle Ableitungen (gx_total, gy_total)
+            r_fit = cdist(points_total, points_total)
+            Phi_fit = np.exp(-(epsilon * r_fit) ** 2)
+            diff_fit = points_total[:, np.newaxis, :] - points_total[np.newaxis, :, :]
+            Phi_dx_fit = -2 * epsilon ** 2 * diff_fit[..., 0] * Phi_fit
+            Phi_dy_fit = -2 * epsilon ** 2 * diff_fit[..., 1] * Phi_fit
+
+            A_fit = np.vstack([Phi_dx_fit, Phi_dy_fit])  # (2*N_total, N_total)
+            b_fit = np.hstack([gx_total, gy_total])      # (2*N_total,)
+
+            coeffs, *_ = lstsq(A_fit, b_fit, rcond=None)
+
+            # Rekonstruktion: NUR auf eigenen Punkten!
+            r_recon = cdist(points, points_total)
+            Phi_recon = np.exp(-(epsilon * r_recon) ** 2)
+            Z_rbf = Phi_recon @ coeffs
+
+            print(f"Chunk: Zeile: {i} Spalte: {j} wird mit Randkopplung approximiert")
+            np.save(f"./Data/ZAprox/Chunk{i}{j}.npy", Z_rbf)
+    return s
+
 #%% Plot funktion
 def Plotfunktion(s,k):
     fig = plt.figure(figsize=(18, 5))
@@ -205,36 +264,40 @@ def Plotfunktion(s,k):
 #             Z_total[i*k:(i+1)*k, j*k:(j+1)*k] = chunk
 #     return Z_total
 
-# def combine_chunks_overlap(s, k, overlap, chunk_folder="./Data/ZAprox"):
-#     # s ... Anzahl der Chunks pro Achse
-#     # k ... Kantenlänge jedes Chunks (ohne Überlappung)
-#     # overlap ... Breite der Überlappung in Pixeln
-#     total_size = s * (k - overlap) + overlap
-#     Z_total = np.zeros((total_size, total_size))
-#     count = np.zeros_like(Z_total)
+def combine_chunks_overlap(s, k, overlap, chunk_folder="./Data/ZAprox"):
+    # s ... Anzahl der Chunks pro Achse
+    # k ... Kantenlänge jedes Chunks (ohne Überlappung)
+    # overlap ... Breite der Überlappung in Pixeln
+    total_size = s * (k - overlap) + overlap
+    Z_total = np.zeros((total_size, total_size))
+    count = np.zeros_like(Z_total)
 
-#     for i in range(s):
-#         for j in range(s):
-#             fname = os.path.join(chunk_folder, f"Chunk{i}{j}.npy")
-#             chunk = np.load(fname).reshape(k, k)
-#             x_start = i * (k - overlap)
-#             y_start = j * (k - overlap)
-#             Z_total[x_start:x_start+k, y_start:y_start+k] += chunk
-#             count[x_start:x_start+k, y_start:y_start+k] += 1
-#     # Mittelwert im Überlappungsbereich
-#     Z_total /= count
-#     return Z_total
+    for i in range(s):
+        for j in range(s):
+            fname = os.path.join(chunk_folder, f"Chunk{i}{j}.npy")
+            chunk = np.load(fname).reshape(k, k)
+            x_start = i * (k - overlap)
+            y_start = j * (k - overlap)
+            Z_total[x_start:x_start+k, y_start:y_start+k] += chunk
+            count[x_start:x_start+k, y_start:y_start+k] += 1
+    # Mittelwert im Überlappungsbereich
+    Z_total /= count
+    return Z_total
 
 
 #%% Main Function
     
 k,s,ztrue,Xtrue,Ytrue = SimWerteforChunk()
-RBF_Algorihtmuss(s,epsilon=1.0)
+RBF_Algorihtmuss_Randkopplung(s, k,epsilon=1)
 fig2 = plt.figure(figsize=(18, 5))
 ax2 = fig2.add_subplot(111, projection='3d')
 # k,s,ztrue,X,Y
-ax2.plot_surface(Xtrue, Ytrue, ztrue.reshape(50,50), cmap='viridis')
+ax2.plot_surface(Xtrue, Ytrue, ztrue.reshape(1000,1000), cmap='viridis')
 ax2.set_title('Original')
+
+#Z_Rec = combine_chunks_overlap(s, k, overlap=0)
+
 
 Plotfunktion(s,k)
 #%%
+

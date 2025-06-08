@@ -77,8 +77,8 @@ def SimWerteforChunk():
         Number of iterations for the calculation
 
     """
-    k = 50 
-    nx, ny = 5000, 5000
+    k = 100 
+    nx, ny = 100, 100
     s = int(nx/k)
     
     x_vec = np.linspace(-1, 1, nx)
@@ -165,7 +165,7 @@ k,s = SimWerteforChunk()
 #    for i in range():
         
 #    return
-# # Visualisierung
+# Visualisierung
 # Z_rbf_grid = Z_rbf.reshape((ny, nx))
 # Z_true_grid = Z_true.reshape((ny, nx))
 # diff_grid = Z_true_grid - Z_rbf_grid#-12.76483456
